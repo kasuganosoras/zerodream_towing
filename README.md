@@ -3,11 +3,32 @@ Vehicle towing system for FiveM
 
 ![Screenshots](https://i.imgur.com/tStbDzL.png)
 
+## Features
+- Towing cars
+- Network synchronized ropes
+- Controllable rope length
+- No framework require
+
 ## Installation
 1. Clone or download this repo
 2. Copy the `zerodream_towing` folder to your server resources folder
 3. Add `start zerodream_towing` to your server.cfg
 4. Restart the server
+
+## API
+**SetTowVehicle:** Use this function to set the towing car, you have to call it two times to set the first and second vehicle.
+```lua
+local vehicleA = GetVehiclePedIsIn(GetPlayerPed(-1), false)
+local vehicleB = GetVehiclePedIsIn(GetPlayerPed(2), false)
+exports["zerodream_towing"]:SetTowVehicle(vehicleA)
+exports["zerodream_towing"]:SetTowVehicle(vehicleB)
+```
+**FreeTowing:** This function will detach the cars immediately.
+```lua
+if IsControlJustPressed(0, 51) then
+  exports["zerodream_towing"]:FreeTowing()
+end
+```
 
 ## Credit
 PocceMod: https://github.com/razzie/PocceMod
