@@ -199,13 +199,9 @@ function Draw2DText(x, y, size, text)
 end
 
 function SendNotification(theme, message)
-    exports.bulletin:Send({
-        message  = message,
-        timeout  = 5000,
-        theme    = theme,
-        position = "bottom",
-        progress = true
-    })
+    SetNotificationTextEntry('STRING')
+    AddTextComponentString(message)
+    DrawNotification(true, false)
 end
 
 function DisplayHelpText(text)
