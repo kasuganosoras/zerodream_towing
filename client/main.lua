@@ -4,6 +4,7 @@ RegisterNetEvent("zerodream_towing:FreeTowing")
 RegisterNetEvent("zerodream_towing:CreateRope")
 RegisterNetEvent("zerodream_towing:RemoveRope")
 RegisterNetEvent("zerodream_towing:LoadRopes")
+RegisterNetEvent("zerodream_towing:UpdateRopeLength")
 
 -- Event handles
 AddEventHandler("zerodream_towing:SetTowVehicle", function(vehicle) SetTowVehicle(vehicle) end)
@@ -11,6 +12,7 @@ AddEventHandler("zerodream_towing:FreeTowing", function() FreeTowing() end)
 AddEventHandler("zerodream_towing:CreateRope", function(netId1, netId2) CreateRopeEvent(netId1, netId2) end)
 AddEventHandler("zerodream_towing:RemoveRope", function(netId1, netId2) RemoveRopeEvent(netId1, netId2) end)
 AddEventHandler("zerodream_towing:LoadRopes", function(ropeList) LoadRopesEvent(ropeList) end)
+AddEventHandler("zerodream_towing:UpdateRopeLength", function(netId1, netId2, length) UpdateRopeLengthEvent(netId1, netId2, length) end)
 
 -- Variables
 _g = {
@@ -30,6 +32,7 @@ end, false)
 -- Functions
 function SetTowVehicle(vehicle)
     -- 检测是否已经在牵引中
+    DebugPrint("_g.isTowing: " .. (_g.isTowing and "true" or "false"))
     if not _g.isTowing and not _g.secondEntity then
         local vehicleName = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(vehicle)))
         -- 检查是否设置了牵引车
@@ -175,6 +178,17 @@ function RemoveRopeEvent(netId1, netId2)
     end
 end
 
+function UpdateRopeLengthEvent(netId1, netId2, length)
+    local rope    = FindRopeByNetworkId(netId1, netId2)
+    local entity1 = NetworkGetEntityFromNetworkId(netId1)
+    local entity2 = NetworkGetEntityFromNetworkId(netId2)
+    DebugPrint("Updating rope length:", rope.id, rope.length, netId1, netId2, length)
+    if rope then
+        rope.length = length
+        RopeForceLength(rope.id, length)
+    end
+end
+
 function LoadRopesEvent(ropeList)
     for k, v in pairs(ropeList) do
         if not FindRopeByNetworkId(v.netId1, v.netId2) then
@@ -207,6 +221,12 @@ function DisplayHelpText(text)
     BeginTextCommandDisplayHelp("STRING")
     AddTextComponentSubstringPlayerName(text)
     EndTextCommandDisplayHelp(0, 0, 1, -1)
+end
+
+function DebugPrint(...)
+    if Config.debug then
+        print(...)
+    end
 end
 
 -- Main Thread
@@ -310,6 +330,50 @@ Citizen.CreateThread(function()
             Draw2DText(0.5, 0.15, 0.4, "isTowing: " .. (_g.isTowing and "true" or "false"))
             Draw2DText(0.5, 0.20, 0.4, "Length: " .. _g.length)
         end
+        if _g.ropeHandle then
+            for _, rope in pairs(_g.ropeHandle) do
+                if DoesEntityExist(NetworkGetEntityFromNetworkId(rope.netId1)) and DoesEntityExist(NetworkGetEntityFromNetworkId(rope.netId2)) then
+                    if _g.firstEntity ~= rope.netId1 and _g.secondEntity ~= rope.netId2 and rope.length then
+                        StopRopeUnwindingFront(rope.id)
+                        StartRopeWinding(rope.id)
+                        RopeForceLength(rope.id, rope.length)
+                        RopeConvertToSimple(rope.id)
+                    end
+                end
+            end
+        end
         Wait(0)
+    end
+end)
+
+Citizen.CreateThread(function()
+    local lastLength = 0
+    while true do
+        Wait(500)
+        if _g.ropeHandle then
+            local newTable = {}
+            for _, rope in pairs(_g.ropeHandle) do
+                if DoesEntityExist(NetworkGetEntityFromNetworkId(rope.netId1)) and DoesEntityExist(NetworkGetEntityFromNetworkId(rope.netId2)) then
+                    if _g.firstEntity ~= rope.netId1 and _g.secondEntity ~= rope.netId2 and rope.length then
+                        RopeForceLength(rope.id, rope.length)
+                    end
+                    table.insert(newTable, rope)
+                else
+                    RemoveRope(rope.id)
+                    DetachRopeFromEntity(rope.id, NetworkGetEntityFromNetworkId(rope.netId1))
+                    DetachRopeFromEntity(rope.id, NetworkGetEntityFromNetworkId(rope.netId2))
+                    DeleteRope(rope.id)
+                end
+            end
+            _g.ropeHandle = newTable
+        end
+        -- Update rope length
+        if _g.isTowing and _g.firstEntity and _g.secondEntity then
+            if _g.length and _g.length ~= lastLength then
+                DebugPrint("Update rope length to server")
+                TriggerServerEvent("zerodream_towing:UpdateRopeLength", _g.firstEntity, _g.secondEntity, _g.length)
+                lastLength = _g.length
+            end
+        end
     end
 end)

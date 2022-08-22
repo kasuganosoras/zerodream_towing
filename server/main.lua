@@ -1,6 +1,7 @@
 RegisterServerEvent('zerodream_towing:CreateRope')
 RegisterServerEvent('zerodream_towing:RemoveRope')
 RegisterServerEvent('zerodream_towing:LoadRopes')
+RegisterServerEvent('zerodream_towing:UpdateRopeLength')
 
 _g = {
     ropeList = {},
@@ -30,6 +31,16 @@ AddEventHandler('zerodream_towing:RemoveRope', function(netId1, netId2)
         if v.netId1 == netId1 and v.netId2 == netId2 then
             table.remove(_g.ropeList, k)
             TriggerClientEvent("zerodream_towing:RemoveRope", -1, netId1, netId2)
+            break
+        end
+    end
+end)
+
+AddEventHandler('zerodream_towing:UpdateRopeLength', function(netId1, netId2, length)
+    for k, v in pairs(_g.ropeList) do
+        if v.netId1 == netId1 and v.netId2 == netId2 then
+            _g.ropeList[k].length = length
+            TriggerClientEvent("zerodream_towing:UpdateRopeLength", -1, netId1, netId2, length)
             break
         end
     end
